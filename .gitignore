@@ -4,3 +4,4 @@ build-*/
 *.png
 !scenes/**/*.png
 .cache
+*.txt
