@@ -29,3 +29,11 @@ find_package(Threads REQUIRED)
 target_link_libraries(raytracer PRIVATE pugixml Threads::Threads)
 
 target_compile_options(raytracer PRIVATE -Wall -Wextra -Wpedantic)
+
+# --- Testler: `ctest --test-dir build` ile çalışır ---
+enable_testing()
+
+add_executable(test_vec3 tests/test_vec3.cpp)
+target_include_directories(test_vec3 PRIVATE src)
+target_compile_options(test_vec3 PRIVATE -Wall -Wextra -Wpedantic)
+add_test(NAME vec3 COMMAND test_vec3)

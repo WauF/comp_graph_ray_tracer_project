@@ -1,38 +1,16 @@
 #include "pugixml.hpp"
+#include "stb_image_write.h" // makrosuz! implementation stb_impl.cpp'de
+#include "vec3.h"
 #include <iostream>
+#include <ostream>
 
 int main() {
-  pugi::xml_document doc;
-  pugi::xml_parse_result result = doc.load_file("scenes/example_scene.xml");
 
-  if (!result) {
-    std::cerr << "XML yükleme hatası: " << result.description() << std::endl;
-    return 1;
-  }
-
-  pugi::xml_node scene = doc.child("scene");
-
-  // Doğrudan erişim örneği:
-  std::cout << "maxraytracedepth: "
-            << scene.child("maxraytracedepth").text().as_int() << "\n\n";
-
-  // scene altındaki tüm çocukları ve değerlerini listeleme:
-  for (pugi::xml_node child : scene.children()) {
-    std::cout << "Etiket: <" << child.name() << ">";
-
-    // Varsa etiket öznitelikleri (örn: id="1")
-    for (pugi::xml_attribute attr : child.attributes()) {
-      std::cout << " [" << attr.name() << "=\"" << attr.value() << "\"]";
-    }
-
-    // Metin içeriği varsa (örn: 6 veya 0 0 0)
-    std::string text_val = child.child_value();
-    if (!text_val.empty()) {
-      std::cout << " -> Metin: " << text_val;
-    }
-
-    std::cout << std::endl;
-  }
+  Vec3 unit_vector(1, 1, 1);
+  std::cout << unit_vector.length() << std::endl;
+  unit_vector /= 0;
+  std::cout << unit_vector.x() << unit_vector.y() << unit_vector.z()
+            << std::endl;
 
   return 0;
 }
