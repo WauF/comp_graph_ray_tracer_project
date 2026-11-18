@@ -6,8 +6,9 @@
 
 int main() {
 
-  Vec3 unit_vector(1, 1, 1);
-  std::cout << unit_vector.length() << std::endl;
+  Vec3 unit_vector(0, 0, 0);
+  std::cout << unit_vector.length() << std::endl
+            << normalize(unit_vector) << std::endl;
   unit_vector /= 0;
   std::cout << unit_vector.x() << unit_vector.y() << unit_vector.z()
             << std::endl;
