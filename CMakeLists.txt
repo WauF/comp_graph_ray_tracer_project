@@ -19,6 +19,7 @@ target_include_directories(pugixml PUBLIC third_party/pugixml)
 add_executable(raytracer
   src/main.cpp
   src/stb_impl.cpp
+  src/camera.cpp
   # yeni .cpp ekledikçe buraya yaz
 )
 
