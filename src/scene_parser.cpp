@@ -1,8 +1,8 @@
 // XML sahne dosyasını Scene yapısına çevirir (pugixml kullanarak).
 // Ray tracing mantığı burada YOK; sadece metin -> sayı -> struct.
 
-#include "scene.h"
 #include "pugixml.hpp"
+#include "scene.h"
 
 #include <cstdio>
 #include <filesystem>
@@ -45,8 +45,7 @@ std::vector<double> readExactly(const char *text, size_t n,
 pugi::xml_node requireChild(pugi::xml_node parent, const char *name) {
   pugi::xml_node n = parent.child(name);
   if (!n)
-    fail(std::string("<") + parent.name() + "> icinde <" + name +
-         "> eksik");
+    fail(std::string("<") + parent.name() + "> icinde <" + name + "> eksik");
   return n;
 }
 
@@ -70,7 +69,8 @@ int requireId(pugi::xml_node node) {
   return a.as_int();
 }
 
-// Düz bir sayı listesini k'lı gruplara böler (vertexdata: 3'lü, texturedata: 2'li).
+// Düz bir sayı listesini k'lı gruplara böler (vertexdata: 3'lü, texturedata:
+// 2'li).
 std::vector<double> readGrouped(pugi::xml_node node, size_t k,
                                 const char *name) {
   std::vector<double> nums = readNumbers(node.child_value(), name);
@@ -114,8 +114,8 @@ void parseFaceToken(const std::string &tok, int &v, int &vt, int &vn) {
 void checkIndex(int idx, size_t size, const char *what, int meshId) {
   if (idx < -1 || idx >= static_cast<int>(size))
     fail("mesh " + std::to_string(meshId) + ": " + what + " indeksi " +
-         std::to_string(idx + 1) + " gecersiz (toplam " +
-         std::to_string(size) + ")");
+         std::to_string(idx + 1) + " gecersiz (toplam " + std::to_string(size) +
+         ")");
 }
 
 // XML'deki id -> vektör indeksi
@@ -129,7 +129,8 @@ int lookup(const std::unordered_map<int, int> &ids, int id,
 
 } // namespace
 
-// --- Asıl parser --------------------------------------------------------------
+// --- Asıl parser
+// --------------------------------------------------------------
 
 Scene loadScene(const std::string &path) {
   pugi::xml_document doc;
@@ -145,8 +146,8 @@ Scene loadScene(const std::string &path) {
 
   // --- Genel ---
   if (pugi::xml_node n = root.child("maxraytracedepth"))
-    s.maxRayTraceDepth =
-        static_cast<int>(readExactly(n.child_value(), 1, "maxraytracedepth")[0]);
+    s.maxRayTraceDepth = static_cast<int>(
+        readExactly(n.child_value(), 1, "maxraytracedepth")[0]);
   if (pugi::xml_node n = root.child("background"))
     s.background = readVec3(n, "background");
 
@@ -158,8 +159,8 @@ Scene loadScene(const std::string &path) {
     s.camera.up = childVec3(cam, "up");
 
     // DİKKAT: XML sırası left right BOTTOM TOP (slaytlardaki l r t b değil!)
-    std::vector<double> np =
-        readExactly(requireChild(cam, "nearplane").child_value(), 4, "nearplane");
+    std::vector<double> np = readExactly(
+        requireChild(cam, "nearplane").child_value(), 4, "nearplane");
     s.camera.l = np[0];
     s.camera.r = np[1];
     s.camera.b = np[2];
@@ -167,8 +168,9 @@ Scene loadScene(const std::string &path) {
 
     s.camera.nearDistance = childDouble(cam, "neardistance");
 
-    std::vector<double> res2 = readExactly(
-        requireChild(cam, "imageresolution").child_value(), 2, "imageresolution");
+    std::vector<double> res2 =
+        readExactly(requireChild(cam, "imageresolution").child_value(), 2,
+                    "imageresolution");
     s.camera.nx = static_cast<int>(res2[0]);
     s.camera.ny = static_cast<int>(res2[1]);
     if (s.camera.nx <= 0 || s.camera.ny <= 0)
@@ -283,9 +285,9 @@ Scene loadScene(const std::string &path) {
   for (pugi::xml_node n : objects.children("mesh")) {
     Mesh m;
     m.id = requireId(n);
-    m.material = lookup(materialIds,
-                        static_cast<int>(childDouble(n, "materialid")),
-                        "mesh " + std::to_string(m.id) + ": materyal");
+    m.material =
+        lookup(materialIds, static_cast<int>(childDouble(n, "materialid")),
+               "mesh " + std::to_string(m.id) + ": materyal");
 
     std::istringstream in(requireChild(n, "faces").child_value());
     std::vector<std::string> tokens;
@@ -318,9 +320,9 @@ Scene loadScene(const std::string &path) {
     inst.id = requireId(n);
     std::string who = "instance " + std::to_string(inst.id);
 
-    inst.baseMesh = lookup(meshIds,
-                           static_cast<int>(childDouble(n, "basemeshid")),
-                           who + ": base mesh");
+    inst.baseMesh =
+        lookup(meshIds, static_cast<int>(childDouble(n, "basemeshid")),
+               who + ": base mesh");
 
     // Materyal verilmemişse base mesh'inkini kullan.
     if (pugi::xml_node mn = n.child("materialid"))
@@ -365,8 +367,8 @@ void printSceneSummary(const Scene &s) {
             << "kamera: pos " << c.position << " gaze " << c.gaze << " up "
             << c.up << "\n"
             << "        l r b t = " << c.l << " " << c.r << " " << c.b << " "
-            << c.t << ", d = " << c.nearDistance << ", " << c.nx << "x"
-            << c.ny << "\n"
+            << c.t << ", d = " << c.nearDistance << ", " << c.nx << "x" << c.ny
+            << "\n"
             << "maxraytracedepth: " << s.maxRayTraceDepth
             << ", background: " << s.background << "\n"
             << "isiklar: ambient " << s.ambientLight << ", "

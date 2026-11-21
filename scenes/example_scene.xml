@@ -2,8 +2,8 @@
     <maxraytracedepth>6</maxraytracedepth>
     <background>0 0 0</background>
     <camera>
-        <position>0 0 4</position>
-        <gaze>0 0 -1</gaze>
+        <position>3 3 5</position>
+        <gaze>-3 -3 -5</gaze>
         <up>0 1 0</up>
         <nearplane>-1 1 -1 1</nearplane>
         <neardistance>1</neardistance>
