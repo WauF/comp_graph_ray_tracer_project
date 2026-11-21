@@ -21,6 +21,7 @@ add_executable(raytracer
   src/stb_impl.cpp
   src/camera.cpp
   src/triangle.cpp
+  src/scene_parser.cpp
   # yeni .cpp ekledikçe buraya yaz
 )
 
