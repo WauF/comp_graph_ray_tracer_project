@@ -139,7 +139,8 @@ bool anyHit(const Scene &scene, const Ray &ray, double tmin, double tmax) {
   return false;
 }
 
-Color shade(const Scene &scene, const Ray &ray, const HitRecord &rec) {
+Color shade(const Scene &scene, const Ray &ray, const HitRecord &rec,
+            int depth) {
   const Material &mat = scene.materials[rec.material];
 
   // ambient = AMB * ambLight
@@ -196,5 +197,19 @@ Color shade(const Scene &scene, const Ray &ray, const HitRecord &rec) {
     specular += mat.specular * E * std::pow(cosAlpha, mat.phongExponent);
   }
 
-  return ambient + diffuse + specular;
+  // mirror = km * (yansıyan ışının getirdiği renk)
+  Color mirror(0, 0, 0);
+  bool isMirror = mat.mirror[0] > 0 || mat.mirror[1] > 0 || mat.mirror[2] > 0;
+  if (isMirror && depth < scene.maxRayTraceDepth) { // sonsuz özyineleme olmasın
+    Vec3 wr = -wo + 2 * dot(rec.normal, wo) * rec.normal; // wr = -wo + 2n(n.wo)
+    Ray reflectRay(rec.point + 1e-4 * rec.normal, wr);   // gölgedeki gibi εn
+    HitRecord reflectRec;
+    if (closestHit(scene, reflectRay, 0, std::numeric_limits<double>::infinity(),
+                   reflectRec)) {
+      // çarptığı noktanın rengi = o noktada yeniden shade (bir derin)
+      mirror = mat.mirror * shade(scene, reflectRay, reflectRec, depth + 1);
+    } // hiçbir şeye çarpmazsa katkı yok
+  }
+
+  return ambient + diffuse + specular + mirror;
 }

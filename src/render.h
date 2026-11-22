@@ -14,5 +14,8 @@ struct HitRecord {
 bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
                 HitRecord &rec);
 
-Color shade(const Scene &scene, const Ray &ray, const HitRecord &rec);
+// depth: bu ışının kaçıncı yansıma olduğu (kameradan çıkan ışın = 0).
+// Varsayılan değer sadece burada (bildirimde) yazılır, .cpp'de tekrar yazılmaz.
+Color shade(const Scene &scene, const Ray &ray, const HitRecord &rec,
+            int depth = 0);
 bool anyHit(const Scene &scene, const Ray &ray, double tmin, double tmax);
