@@ -6,8 +6,10 @@
 #include "stb_image_write.h"
 #include "vec3.h"
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <limits>
+#include <thread>
 #include <vector>
 
 int main() {
@@ -24,26 +26,50 @@ int main() {
 
   // her piksel için ray üretip fırlatma
   auto t0 = std::chrono::steady_clock::now();
-  for (int j = 0; j < cam.ny; ++j) {
-    for (int i = 0; i < cam.nx; ++i) {
-      Ray ray = cam.generateRay(i, j);
-      unsigned char *px = &image[(j * cam.nx + i) * 3];
 
-      HitRecord rec;
-      Color pixelColor;
-      if (closestHit(scene, ray, 1e-6, std::numeric_limits<double>::infinity(),
-                     rec)) {
-        pixelColor = shade(scene, ray, rec);
-      } else {
-        pixelColor = scene.background;
+  // sıradaki çizilecek satır: thread'ler buradan satır kapar
+  std::atomic<int> nextRow(0);
+
+  // her thread bu fonksiyonu çalıştırır ([&]: main'deki değişkenleri referansla
+  // görür)
+  auto worker = [&]() {
+    while (true) {
+      int j = nextRow++; // atomik: iki thread aynı satırı ALAMAZ
+      if (j >= cam.ny)
+        break; // satır kalmadı, bu thread bitti
+
+      for (int i = 0; i < cam.nx; ++i) {
+        Ray ray = cam.generateRay(i, j);
+        unsigned char *px = &image[(j * cam.nx + i) * 3];
+
+        HitRecord rec;
+        Color pixelColor;
+        if (closestHit(scene, ray, 1e-6,
+                       std::numeric_limits<double>::infinity(), rec)) {
+          pixelColor = shade(scene, ray, rec);
+        } else {
+          pixelColor = scene.background;
+        }
+        px[0] = (unsigned char)std::min(255.0, pixelColor[0]);
+        px[1] = (unsigned char)std::min(255.0, pixelColor[1]);
+        px[2] = (unsigned char)std::min(255.0, pixelColor[2]);
       }
-      px[0] = (unsigned char)std::min(255.0, pixelColor[0]);
-      px[1] = (unsigned char)std::min(255.0, pixelColor[1]);
-      px[2] = (unsigned char)std::min(255.0, pixelColor[2]);
     }
-  }
+  };
+  // çalışan makinede kaç thread çalışabilir max buna bakar
+  int numThreads = std::thread::hardware_concurrency();
+
+  if (numThreads == 0)
+    numThreads = 1; // standart: bilinmiyorsa 0 dönebilir
+
+  std::vector<std::thread> threads;
+  for (int k = 0; k < numThreads; ++k)
+    threads.emplace_back(worker); // oluşturulduğu anda çalışmaya başlar
+  for (std::thread &th : threads)
+    th.join(); // hepsi bitene kadar bekle
+
   auto t1 = std::chrono::steady_clock::now();
-  printf("render süres,: %.3f s\n",
+  printf("render süresi: %.3f s\n",
          std::chrono::duration<double>(t1 - t0).count());
 
   stbi_write_png("letters_test.png", cam.nx, cam.ny, 3, image.data(),
