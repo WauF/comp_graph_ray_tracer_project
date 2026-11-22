@@ -78,12 +78,18 @@ bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
   double bestT = tmax;
   const Face *bestFace = nullptr;
   int bestMaterial = 0;
+  // en yakın çarpışma bir instance'tan mı geldi? (nullptr = düz mesh)
+  // normali dönüştürmek için lazım
+  const Instance *bestInstance = nullptr;
 
   // sahnedeki her üçgenle test, en yakını tut (tmax yerine bestT veriyoruz)
   for (const Mesh &mesh : scene.meshes) {
     if (useBVH) {
-      if (traverseClosest(scene, mesh, 0, ray, tmin, bestT, bestHit, bestFace))
+      if (traverseClosest(scene, mesh, 0, ray, tmin, bestT, bestHit,
+                          bestFace)) {
         bestMaterial = mesh.material;
+        bestInstance = nullptr; // daha yakın bir düz mesh bulundu
+      }
     } else {
       for (const Face &f : mesh.faces) {
         Vec3 a = scene.vertices[f.v[0]];
@@ -95,6 +101,38 @@ bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
           bestHit = hit;
           bestFace = &f;
           bestMaterial = mesh.material;
+          bestInstance = nullptr;
+        }
+      }
+    }
+  }
+
+  // instance'lar: ışını M⁻¹ ile base mesh'in yerel uzayına taşı,
+  // base mesh'in KENDİ BVH'sinde ara. Yön normalize EDİLMEZ, böylece yerel t
+  // dünyadaki t ile aynı kalır ve bestT doğrudan karşılaştırılabilir.
+  for (const Instance &inst : scene.instances) {
+    Ray localRay(transformPoint(inst.Minv, ray.origin),  // [o, 1]
+                 transformDir(inst.Minv, ray.dir));      // [d, 0]
+    const Mesh &mesh = scene.meshes[inst.baseMesh];
+
+    if (useBVH) {
+      if (traverseClosest(scene, mesh, 0, localRay, tmin, bestT, bestHit,
+                          bestFace)) {
+        bestMaterial = inst.material; // mesh'in değil, instance'ın materyali
+        bestInstance = &inst;
+      }
+    } else {
+      for (const Face &f : mesh.faces) {
+        Vec3 a = scene.vertices[f.v[0]];
+        Vec3 b = scene.vertices[f.v[1]];
+        Vec3 c = scene.vertices[f.v[2]];
+
+        if (intersectTriangle(localRay, a, b, c, tmin, bestT, hit)) {
+          bestT = hit.t;
+          bestHit = hit;
+          bestFace = &f;
+          bestMaterial = inst.material;
+          bestInstance = &inst;
         }
       }
     }
@@ -108,10 +146,16 @@ bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
   Vec3 nb = scene.normals[bestFace->vn[1]];
   Vec3 nc = scene.normals[bestFace->vn[2]];
   double alpha = 1 - bestHit.beta - bestHit.gamma;
+  Vec3 n = alpha * na + bestHit.beta * nb + bestHit.gamma * nc; // yerel normal
+
+  // instance ise normali dünyaya taşı: n_world = (M⁻¹)ᵀ · n_local
+  // (M · n değil: eşit olmayan ölçeklemede yüzeye dik kalmaz)
+  if (bestInstance != nullptr)
+    n = transformDir(transpose(bestInstance->Minv), n);
 
   rec.t = bestT;
-  rec.point = ray.at(bestT);
-  rec.normal = normalize(alpha * na + bestHit.beta * nb + bestHit.gamma * nc);
+  rec.point = ray.at(bestT); // dünya ışını + aynı t -> dünyadaki nokta
+  rec.normal = normalize(n);
   rec.material = bestMaterial;
   return true;
 }
@@ -133,6 +177,25 @@ bool anyHit(const Scene &scene, const Ray &ray, double tmin, double tmax) {
         if (intersectTriangle(ray, a, b, c, tmin, tmax, hit)) {
           return true;
         }
+      }
+    }
+  }
+
+  // instance'lar: yerel ışınla aynı test (gölge için normal gerekmez)
+  for (const Instance &inst : scene.instances) {
+    Ray localRay(transformPoint(inst.Minv, ray.origin),
+                 transformDir(inst.Minv, ray.dir));
+    const Mesh &mesh = scene.meshes[inst.baseMesh];
+
+    if (useBVH) {
+      if (traverseAny(scene, mesh, 0, localRay, tmin, tmax))
+        return true;
+    } else {
+      for (const Face &f : mesh.faces) {
+        if (intersectTriangle(localRay, scene.vertices[f.v[0]],
+                              scene.vertices[f.v[1]], scene.vertices[f.v[2]],
+                              tmin, tmax, hit))
+          return true;
       }
     }
   }

@@ -14,9 +14,31 @@
 
 int main() {
   useBVH = true;
-  Scene scene = loadScene("scenes/mirror_test.xml");
+  Scene scene = loadScene("scenes/example_scene.xml");
   for (Mesh &m : scene.meshes) {
     buildBVH(scene, m);
+  }
+
+  // her instance için M ve M⁻¹ (XML sırası: "t1 r1 s1" -> M = T1 · R1 · S1)
+  for (Instance &inst : scene.instances) {
+    inst.M = identity();
+    inst.Minv = identity();
+    for (int id : inst.transforms) {
+      const Transformation &tr = scene.transformations[id];
+      Mat4 A, Ainv; // bu dönüşüm ve tersi
+      if (tr.kind == Transformation::Kind::Translation) {
+        A = translation(tr.v);
+        Ainv = translation(-tr.v);
+      } else if (tr.kind == Transformation::Kind::Scaling) {
+        A = scaling(tr.v);
+        Ainv = scaling(Vec3(1 / tr.v.x(), 1 / tr.v.y(), 1 / tr.v.z()));
+      } else {
+        A = rotation(tr.angle, tr.v);
+        Ainv = rotation(-tr.angle, tr.v);
+      }
+      inst.M = inst.M * A;          // sağa ekle: T, T·R, T·R·S
+      inst.Minv = Ainv * inst.Minv; // sola ekle: T⁻¹, R⁻¹T⁻¹, S⁻¹R⁻¹T⁻¹
+    }
   }
   printSceneSummary(scene);
 
@@ -72,7 +94,7 @@ int main() {
   printf("render süresi: %.3f s\n",
          std::chrono::duration<double>(t1 - t0).count());
 
-  stbi_write_png("mirror_test.png", cam.nx, cam.ny, 3, image.data(),
+  stbi_write_png("example_scene.png", cam.nx, cam.ny, 3, image.data(),
                  cam.nx * 3);
   return 0;
 }

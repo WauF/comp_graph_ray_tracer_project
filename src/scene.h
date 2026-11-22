@@ -1,6 +1,7 @@
 #pragma once
 #include "bvh.h"
 #include "camera.h"
+#include "mat4.h"
 #include "vec3.h"
 #include <string>
 #include <vector>
@@ -82,6 +83,7 @@ struct Instance {
   // XML'de yazıldığı sırayla ("t1 r1 s1"), scene.transformations indeksleri.
   // PDF kuralı: M = T1 · R1 · S1 -> noktaya SAĞDAN SOLA uygulanır (önce S1).
   std::vector<int> transforms;
+  Mat4 M, Minv;
 };
 
 struct Scene {
