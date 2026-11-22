@@ -157,6 +157,17 @@ bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
   rec.point = ray.at(bestT); // dünya ışını + aynı t -> dünyadaki nokta
   rec.normal = normalize(n);
   rec.material = bestMaterial;
+
+  // texture koordinatı: normal gibi aynı barycentric ağırlıklarla karıştır.
+  // instance'ta dönüşüm gerekmez, texture mesh yüzeyine yapışık.
+  rec.hasUV = bestFace->vt[0] >= 0;
+  if (rec.hasUV) {
+    const TexCoord &ta = scene.texCoords[bestFace->vt[0]];
+    const TexCoord &tb = scene.texCoords[bestFace->vt[1]];
+    const TexCoord &tc = scene.texCoords[bestFace->vt[2]];
+    rec.u = alpha * ta.u + bestHit.beta * tb.u + bestHit.gamma * tc.u;
+    rec.v = alpha * ta.v + bestHit.beta * tb.v + bestHit.gamma * tc.v;
+  }
   return true;
 }
 
@@ -274,5 +285,13 @@ Color shade(const Scene &scene, const Ray &ray, const HitRecord &rec,
     } // hiçbir şeye çarpmazsa katkı yok
   }
 
-  return ambient + diffuse + specular + mirror;
+  Color shaded = ambient + diffuse + specular + mirror;
+
+  // texture: C_final = (1 - t) * C_shaded + t * C_texture   (t = texturefactor)
+  // materyalde texture yoksa, yüzde uv yoksa ya da resim yüklenmediyse atla
+  if (mat.textureFactor > 0 && rec.hasUV && !scene.texture.data.empty()) {
+    Color texColor = sampleTexture(scene.texture, rec.u, rec.v); // 0-255
+    return (1 - mat.textureFactor) * shaded + mat.textureFactor * texColor;
+  }
+  return shaded;
 }

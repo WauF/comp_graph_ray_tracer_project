@@ -19,6 +19,12 @@ int main() {
     buildBVH(scene, m);
   }
 
+  // texture resmi: sahnede varsa bir kez yükle (render sırasında sadece okunur)
+  if (!scene.textureImage.empty() &&
+      !loadTexture(scene.textureImage, scene.texture))
+    printf("UYARI: texture yüklenemedi: %s (texture'sız devam)\n",
+           scene.textureImage.c_str());
+
   // her instance için M ve M⁻¹ (XML sırası: "t1 r1 s1" -> M = T1 · R1 · S1)
   for (Instance &inst : scene.instances) {
     inst.M = identity();

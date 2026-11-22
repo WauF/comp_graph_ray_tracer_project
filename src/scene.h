@@ -2,6 +2,7 @@
 #include "bvh.h"
 #include "camera.h"
 #include "mat4.h"
+#include "texture.h"
 #include "vec3.h"
 #include <string>
 #include <vector>
@@ -103,6 +104,8 @@ struct Scene {
   std::vector<TexCoord> texCoords;
   std::string textureImage; // XML dosyasının klasörüne göre çözülmüş yol;
                             // sahnede texture yoksa boş
+  Texture texture; // yüklenmiş resim: parser DOLDURMAZ, main yükler
+                   // (yüklenmediyse data boş)
 
   std::vector<Mesh> meshes;
   std::vector<Instance> instances;

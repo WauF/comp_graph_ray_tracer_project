@@ -9,6 +9,8 @@ struct HitRecord {
   double t;
   Vec3 point, normal;
   int material;
+  double u = 0, v = 0; // texture koordinatı (barycentric interpolasyon)
+  bool hasUV = false;  // yüzde vt yoksa ("3//5") false
 };
 
 bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,

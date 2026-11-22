@@ -24,6 +24,7 @@ add_executable(raytracer
   src/scene_parser.cpp
   src/render.cpp
   src/bvh.cpp
+  src/texture.cpp
   # yeni .cpp ekledikçe buraya yaz
 )
 
