@@ -14,7 +14,7 @@
 
 int main() {
   useBVH = true;
-  Scene scene = loadScene("scenes/letters_test.xml");
+  Scene scene = loadScene("scenes/mirror_test.xml");
   for (Mesh &m : scene.meshes) {
     buildBVH(scene, m);
   }
@@ -72,7 +72,7 @@ int main() {
   printf("render süresi: %.3f s\n",
          std::chrono::duration<double>(t1 - t0).count());
 
-  stbi_write_png("letters_test.png", cam.nx, cam.ny, 3, image.data(),
+  stbi_write_png("mirror_test.png", cam.nx, cam.ny, 3, image.data(),
                  cam.nx * 3);
   return 0;
 }

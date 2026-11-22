@@ -8,7 +8,7 @@
         <up>0 1 0</up>
         <nearplane>-1 1 -1 1</nearplane>
         <neardistance>1.8</neardistance>
-        <imageresolution>400 400</imageresolution>
+        <imageresolution>2000 2000</imageresolution>
     </camera>
     <lights>
         <ambientlight>25 25 25</ambientlight>
