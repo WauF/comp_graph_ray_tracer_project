@@ -6,11 +6,16 @@
 #include "stb_image_write.h"
 #include "vec3.h"
 #include <algorithm>
+#include <chrono>
 #include <limits>
 #include <vector>
 
 int main() {
-  Scene scene = loadScene("scenes/shadow_test.xml");
+  useBVH = true;
+  Scene scene = loadScene("scenes/letters_test.xml");
+  for (Mesh &m : scene.meshes) {
+    buildBVH(scene, m);
+  }
   printSceneSummary(scene);
 
   Camera cam = makeCamera(scene.camera);
@@ -18,6 +23,7 @@ int main() {
   std::vector<unsigned char> image(cam.nx * cam.ny * 3);
 
   // her piksel için ray üretip fırlatma
+  auto t0 = std::chrono::steady_clock::now();
   for (int j = 0; j < cam.ny; ++j) {
     for (int i = 0; i < cam.nx; ++i) {
       Ray ray = cam.generateRay(i, j);
@@ -36,8 +42,11 @@ int main() {
       px[2] = (unsigned char)std::min(255.0, pixelColor[2]);
     }
   }
+  auto t1 = std::chrono::steady_clock::now();
+  printf("render süres,: %.3f s\n",
+         std::chrono::duration<double>(t1 - t0).count());
 
-  stbi_write_png("shadow_test.png", cam.nx, cam.ny, 3, image.data(),
+  stbi_write_png("letters_test.png", cam.nx, cam.ny, 3, image.data(),
                  cam.nx * 3);
   return 0;
 }

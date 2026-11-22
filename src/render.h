@@ -3,6 +3,8 @@
 #include "scene.h"
 #include "vec3.h"
 
+extern bool useBVH;
+
 struct HitRecord {
   double t;
   Vec3 point, normal;

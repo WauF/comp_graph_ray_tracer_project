@@ -1,10 +1,76 @@
 #include "render.h"
+#include "bvh.h"
 #include "scene.h"
 #include "triangle.h"
 #include "vec3.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
+
+bool useBVH = true;
+
+// BVH'de en yakın çarpışmayı arar. bestT / bestHit / bestFace referansla
+// geliyor: daha yakın bir üçgen bulursa onları günceller.
+static bool traverseClosest(const Scene &scene, const Mesh &mesh, int nodeIdx,
+                            const Ray &ray, double tmin, double &bestT,
+                            Hit &bestHit, const Face *&bestFace) {
+  const BVHNode &node = mesh.bvh.nodes[nodeIdx];
+
+  // kutuyu ıskaladıysa (ya da kutu bestT'den uzaktaysa) içine girme
+  if (!hitAABB(node.box, ray, tmin, bestT))
+    return false;
+
+  // yaprak: içindeki birkaç üçgeni eski usul tek tek test et
+  if (node.count > 0) {
+    bool found = false;
+    Hit hit;
+    for (int k = node.start; k < node.start + node.count; ++k) {
+      const Face &f = mesh.faces[mesh.bvh.faceOrder[k]];
+      Vec3 a = scene.vertices[f.v[0]];
+      Vec3 b = scene.vertices[f.v[1]];
+      Vec3 c = scene.vertices[f.v[2]];
+
+      if (intersectTriangle(ray, a, b, c, tmin, bestT, hit)) {
+        bestT = hit.t;
+        bestHit = hit;
+        bestFace = &f;
+        found = true;
+      }
+    }
+    return found;
+  }
+
+  // iç düğüm: İKİ çocuğa da in (|| ile birleştirme, kısa devre sağı atlar!)
+  bool l = traverseClosest(scene, mesh, node.left, ray, tmin, bestT, bestHit,
+                           bestFace);
+  bool r = traverseClosest(scene, mesh, node.right, ray, tmin, bestT, bestHit,
+                           bestFace);
+  return l || r;
+}
+
+// Gölge: herhangi bir çarpışma yeter, ilkinde dön.
+static bool traverseAny(const Scene &scene, const Mesh &mesh, int nodeIdx,
+                        const Ray &ray, double tmin, double tmax) {
+  const BVHNode &node = mesh.bvh.nodes[nodeIdx];
+  if (!hitAABB(node.box, ray, tmin, tmax))
+    return false;
+
+  if (node.count > 0) {
+    Hit hit;
+    for (int k = node.start; k < node.start + node.count; ++k) {
+      const Face &f = mesh.faces[mesh.bvh.faceOrder[k]];
+      if (intersectTriangle(ray, scene.vertices[f.v[0]], scene.vertices[f.v[1]],
+                            scene.vertices[f.v[2]], tmin, tmax, hit))
+        return true;
+    }
+    return false;
+  }
+
+  // burada kısa devre İSTİYORUZ: solda engel varsa sağa bakmaya gerek yok
+  if (traverseAny(scene, mesh, node.left, ray, tmin, tmax))
+    return true;
+  return traverseAny(scene, mesh, node.right, ray, tmin, tmax);
+}
 
 bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
                 HitRecord &rec) {
@@ -15,16 +81,21 @@ bool closestHit(const Scene &scene, const Ray &ray, double tmin, double tmax,
 
   // sahnedeki her üçgenle test, en yakını tut (tmax yerine bestT veriyoruz)
   for (const Mesh &mesh : scene.meshes) {
-    for (const Face &f : mesh.faces) {
-      Vec3 a = scene.vertices[f.v[0]];
-      Vec3 b = scene.vertices[f.v[1]];
-      Vec3 c = scene.vertices[f.v[2]];
-
-      if (intersectTriangle(ray, a, b, c, tmin, bestT, hit)) {
-        bestT = hit.t;
-        bestHit = hit;
-        bestFace = &f;
+    if (useBVH) {
+      if (traverseClosest(scene, mesh, 0, ray, tmin, bestT, bestHit, bestFace))
         bestMaterial = mesh.material;
+    } else {
+      for (const Face &f : mesh.faces) {
+        Vec3 a = scene.vertices[f.v[0]];
+        Vec3 b = scene.vertices[f.v[1]];
+        Vec3 c = scene.vertices[f.v[2]];
+
+        if (intersectTriangle(ray, a, b, c, tmin, bestT, hit)) {
+          bestT = hit.t;
+          bestHit = hit;
+          bestFace = &f;
+          bestMaterial = mesh.material;
+        }
       }
     }
   }
@@ -50,13 +121,18 @@ bool anyHit(const Scene &scene, const Ray &ray, double tmin, double tmax) {
 
   // sahnedeki her üçgenle test, herhangi bir intersect olduğu anda true
   for (const Mesh &mesh : scene.meshes) {
-    for (const Face &f : mesh.faces) {
-      Vec3 a = scene.vertices[f.v[0]];
-      Vec3 b = scene.vertices[f.v[1]];
-      Vec3 c = scene.vertices[f.v[2]];
-
-      if (intersectTriangle(ray, a, b, c, tmin, tmax, hit)) {
+    if (useBVH) {
+      if (traverseAny(scene, mesh, 0, ray, tmin, tmax))
         return true;
+    } else {
+      for (const Face &f : mesh.faces) {
+        Vec3 a = scene.vertices[f.v[0]];
+        Vec3 b = scene.vertices[f.v[1]];
+        Vec3 c = scene.vertices[f.v[2]];
+
+        if (intersectTriangle(ray, a, b, c, tmin, tmax, hit)) {
+          return true;
+        }
       }
     }
   }

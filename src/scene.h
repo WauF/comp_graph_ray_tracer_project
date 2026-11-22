@@ -1,4 +1,5 @@
 #pragma once
+#include "bvh.h"
 #include "camera.h"
 #include "vec3.h"
 #include <string>
@@ -49,9 +50,9 @@ struct Material {
 struct Transformation {
   enum class Kind { Translation, Scaling, Rotation };
   Kind kind;
-  Vec3 v;            // translation: (tx,ty,tz)  scaling: (sx,sy,sz)
-                     // rotation: dönme ekseni (rx,ry,rz)
-  double angle = 0;  // sadece rotation: derece cinsinden
+  Vec3 v;           // translation: (tx,ty,tz)  scaling: (sx,sy,sz)
+                    // rotation: dönme ekseni (rx,ry,rz)
+  double angle = 0; // sadece rotation: derece cinsinden
 };
 
 struct TexCoord {
@@ -67,16 +68,17 @@ struct Face {
 };
 
 struct Mesh {
-  int id = 0;           // XML'deki id (sadece hata mesajları / debug için)
-  int material = 0;     // scene.materials içindeki indeks
+  BVH bvh;
+  int id = 0;       // XML'deki id (sadece hata mesajları / debug için)
+  int material = 0; // scene.materials içindeki indeks
   std::vector<Face> faces;
 };
 
 struct Instance {
   int id = 0;
-  int baseMesh = 0;     // scene.meshes içindeki indeks
-  int material = 0;     // scene.materials içindeki indeks (XML'de yoksa
-                        // base mesh'in materyali)
+  int baseMesh = 0; // scene.meshes içindeki indeks
+  int material = 0; // scene.materials içindeki indeks (XML'de yoksa
+                    // base mesh'in materyali)
   // XML'de yazıldığı sırayla ("t1 r1 s1"), scene.transformations indeksleri.
   // PDF kuralı: M = T1 · R1 · S1 -> noktaya SAĞDAN SOLA uygulanır (önce S1).
   std::vector<int> transforms;
