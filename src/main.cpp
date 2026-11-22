@@ -8,13 +8,35 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <limits>
+#include <stdexcept>
+#include <string>
 #include <thread>
 #include <vector>
 
-int main() {
-  useBVH = true;
-  Scene scene = loadScene("scenes/example_scene.xml");
+// Kullanım: ./raytracer <sahne.xml> <çıktı.png> [--no-bvh]
+int main(int argc, char **argv) {
+  // 3. argüman isteğe bağlı: sadece "--no-bvh" olabilir
+  bool badArgs = argc < 3 || argc > 4 ||
+                 (argc == 4 && std::string(argv[3]) != "--no-bvh");
+  if (badArgs) {
+    fprintf(stderr, "Usage: %s <scene.xml> <output.png> [--no-bvh]\n",
+            argv[0]);
+    return 1;
+  }
+  const char *scenePath = argv[1]; // argv[0] programın kendi adı
+  const char *outputPath = argv[2];
+
+  useBVH = (argc != 4); // "--no-bvh" verildiyse brute force
+  printf("BVH: %s\n", useBVH ? "on" : "off");
+  Scene scene;
+  try {
+    scene = loadScene(scenePath);
+  } catch (const std::runtime_error &e) { // parser hata mesajıyla fırlatır
+    fprintf(stderr, "Error: %s\n", e.what());
+    return 1;
+  }
   for (Mesh &m : scene.meshes) {
     buildBVH(scene, m);
   }
@@ -100,7 +122,12 @@ int main() {
   printf("render süresi: %.3f s\n",
          std::chrono::duration<double>(t1 - t0).count());
 
-  stbi_write_png("example_scene.png", cam.nx, cam.ny, 3, image.data(),
-                 cam.nx * 3);
+  // stbi_write_png başarısızsa 0 döner (ör. klasör yoksa)
+  if (!stbi_write_png(outputPath, cam.nx, cam.ny, 3, image.data(),
+                      cam.nx * 3)) {
+    fprintf(stderr, "Error: cannot write %s\n", outputPath);
+    return 1;
+  }
+  printf("image saved: %s\n", outputPath);
   return 0;
 }
