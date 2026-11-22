@@ -83,97 +83,9 @@ The program uses all CPU cores. It gets the number of cores from `std::thread::h
 | `scenes/` | Test scenes and the texture image |
 | `tools/` | Python scripts that make the test scenes |
 
-## 5. Algorithms
+## 5. BVH
 
-### 5.1 Camera and primary rays
-
-I use the camera model from the course slides. The camera has the position `e` and the vectors `u`, `v`, `w`:
-
-- `w = -normalize(gaze)`
-- `u = normalize(cross(up, w))`
-- `v = cross(w, u)`
-
-The image plane is at distance `d` from the camera. For pixel `(i, j)`, the ray goes from `e` through the center of the pixel. We do not normalize the ray direction.
-
-### 5.2 Ray-triangle intersection
-
-We write the hit point in two ways:
-
-`o + t·d = a + β·(b − a) + γ·(c − a)`
-
-This gives a 3x3 linear system. We solve it with Cramer's rule. The ray hits the triangle if all these conditions are true:
-
-- `β ≥ 0`
-- `γ ≥ 0`
-- `β + γ ≤ 1`
-- `tmin ≤ t ≤ tmax`
-
-We use `β` and `γ` again to interpolate the vertex normals and the texture coordinates.
-
-### 5.3 Shading
-
-For each hit point, the color is:
-
-```
-L = ka·Ia + Σ (lights) [ kd·max(0, n·wi)·E + ks·max(0, n·h)^p·E ] + km·L_mirror
-h = normalize(wi + wo)
-```
-
-- For a point light: `E = I / r²`. The `r` is the distance to the light.
-- For a triangular light: `E = I`. There is no distance attenuation. The light direction is `normalize(cross(v1 − v2, v1 − v3))`.
-
-**Shadows:** For each light, we send a shadow ray from the hit point to the light. If the shadow ray hits an object, the light gives no diffuse and no specular color. The ambient color stays.
-
-To prevent self-intersection, we move the ray origin a small distance along the normal: `x' = x + ε·n`, with `ε = 10⁻⁴`.
-
-For a point light, the shadow ray direction is `light − x'`. We do not normalize it. Thus, `t = 1` is the light position, and we test only `0 < t < 1`.
-
-### 5.4 Mirror reflection
-
-If the material has a mirror coefficient `km > 0`, we send a reflection ray:
-
-`wr = −wo + 2·(n·wo)·n`
-
-We calculate the color of the reflection ray with the same shading function (recursion). Each reflection increases the depth by 1. The recursion stops at `maxraytracedepth`.
-
-If the reflection ray hits no object, it gives no color. (The assignment text does not define this case. We selected this rule.)
-
-### 5.5 Instancing
-
-An instance uses the triangles of a base mesh. We do not copy the triangles.
-
-For each instance, we calculate the matrix `M` and its inverse `M⁻¹` one time, before the render. The transformations in the XML file are applied from right to left: `t1 r1 s1` gives `M = T1 · R1 · S1`.
-
-We do not use a general matrix inverse. We use the inverse of each part and multiply them in the opposite order:
-
-- `T(t)⁻¹ = T(−t)`
-- `S(s)⁻¹ = S(1/s)`
-- `R(θ)⁻¹ = R(−θ)`
-- `M⁻¹ = S1⁻¹ · R1⁻¹ · T1⁻¹`
-
-To test an instance, we move the ray into the local space of the base mesh:
-
-- `o_local = M⁻¹ · [o, 1]`
-- `d_local = M⁻¹ · [d, 0]`
-
-We do not normalize `d_local`. Thus, `t` in local space is the same as `t` in world space. We can compare the hits of all meshes and instances directly.
-
-We transform the normal with `(M⁻¹)ᵀ`, not with `M`. With non-uniform scaling, `M · n` is not perpendicular to the surface.
-
-### 5.6 Texture mapping
-
-We interpolate the texture coordinates `(u, v)` of the three vertices with `β` and `γ`. Then we find the nearest pixel in the image:
-
-- `column = round(u · (width − 1))`
-- `row = round((1 − v) · (height − 1))`
-
-We use `1 − v` because `v = 0` is at the bottom of the texture, but row 0 is at the top of the image.
-
-The final color is: `C_final = (1 − t) · C_shaded + t · C_texture`. The `t` is the `texturefactor` of the material. `C_shaded` includes the ambient, diffuse, specular and mirror colors.
-
-## 6. BVH
-
-### 6.1 Structure
+### 5.1 Structure
 
 Each mesh has its own BVH. An instance uses the BVH of its base mesh, in local space. Thus, we build each BVH only one time.
 
@@ -189,7 +101,7 @@ struct BVHNode {
 
 A node with `count > 0` is a leaf. The BVH also has an array `faceOrder`. It holds the triangle indices. The build sorts this array, so the triangles of each node are next to each other.
 
-### 6.2 Build
+### 5.2 Build
 
 The build is recursive. For a range of triangles, it does these steps:
 
@@ -201,7 +113,7 @@ The build is recursive. For a range of triangles, it does these steps:
 
 A median split always gives two halves of equal size. Thus, the tree is balanced, and its depth is about `log2(N / 4)`.
 
-### 6.3 Ray-box test (slab method)
+### 5.3 Ray-box test (slab method)
 
 A box is the intersection of three slabs (one slab for each axis). For each axis, we calculate the `t` values where the ray goes into and out of the slab. We keep the latest entry and the earliest exit. If the exit is before the entry, the ray does not hit the box.
 
@@ -216,7 +128,7 @@ for each axis a:
 return true
 ```
 
-### 6.4 Traversal
+### 5.4 Traversal
 
 **Closest hit** (primary rays and reflection rays):
 
@@ -228,11 +140,11 @@ return true
 
 The steps are the same, but we stop at the first hit. A shadow ray only needs to know if there is an object between the point and the light.
 
-### 6.5 BVH on and off
+### 5.5 BVH on and off
 
-The `--no-bvh` argument turns the BVH off (see section 3). Then the program uses the brute-force search. The brute-force search tests all triangles for each ray. We keep both methods to compare the render times (section 9).
+The `--no-bvh` argument turns the BVH off (see section 3). Then the program uses the brute-force search. The brute-force search tests all triangles for each ray. We keep both methods to compare the render times (section 8).
 
-## 7. Multithreading
+## 6. Multithreading
 
 Each pixel is independent from the other pixels. Thus, the threads do not have to wait for each other.
 
@@ -247,7 +159,7 @@ With this method, a fast thread takes more rows. Thus, all threads work until th
 
 The scene and the BVHs are read-only during the render. Each pixel has exactly one writer thread. Thus, we do not need locks.
 
-## 8. Test scenes
+## 7. Test scenes
 
 | Scene file | Triangles | What it tests |
 |---|---|---|
@@ -263,9 +175,9 @@ The Python scripts in `tools/` make the large test scenes. You can make a scene 
 python3 tools/make_bvh_test.py --level 6 --out scenes/bvh_test_big.xml
 ```
 
-## 9. Render times
+## 8. Render times
 
-### 9.1 Test computer and method
+### 8.1 Test computer and method
 
 - Computer: Apple M4 (10 cores: 4 performance cores and 6 efficiency cores), 16 GB memory
 - Operating system: macOS 26.6
@@ -275,7 +187,7 @@ The times show only the render (the pixel loop). They do not include the XML par
 
 For runs shorter than 1 second, I did 5 runs and show the median. The program shows the time in milliseconds. Thus, very short times are not precise.
 
-### 9.2 BVH and multithreading with different triangle counts
+### 8.2 BVH and multithreading with different triangle counts
 
 For this test, we made the `bvh_test` scene with 4 different sphere levels (`tools/make_bvh_test.py --level 3/4/5/6`). The image size is 400 × 400. The scene has one point light and one triangular light. Thus, each hit point sends up to 2 shadow rays.
 
@@ -302,7 +214,7 @@ Results:
 - The BVH build is fast. For 83,714 triangles, it takes 23 ms. One render without the BVH takes about 9,000 times longer.
 - **Multithreading** makes the brute-force render 5 to 6 times faster.
 
-### 9.3 Multithreading with different thread counts
+### 8.3 Multithreading with different thread counts
 
 The BVH renders in the previous table are too short to measure the thread speedup. Thus, we used a larger render for this test: `mirror_test` (42,042 triangles, mirror depth 6, 2 point lights) at 1600 × 1600, with the BVH.
 
@@ -321,7 +233,7 @@ Results:
 - After 4 threads, the speedup is smaller. The other 6 cores are efficiency cores. They are slower than the performance cores.
 - On a computer with equal cores, we expect a speedup near the core count.
 
-## 10. Screenshots
+## 9. Screenshots
 
 All images are in the `screenshots/` folder. The scenes are in the `scenes/` folder.
 
