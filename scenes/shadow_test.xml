@@ -1,0 +1,100 @@
+<!--
+  GÖLGE TESTİ: zemin üzerinde duran bir küp, iki ışık.
+  - Point light sol-arkada yüksekte -> küpün gölgesi zeminde ÖNE-SAĞA düşer
+    (kameraya doğru, rahat görünür).
+  - Triangular light ön-soldan eğik vuruyor -> ikinci, daha soluk gölge zeminde
+    ARKA-SAĞA düşer. Yönü: normalize(cross(v1-v2, v1-v3)) = normalize(1, -4, -2)
+  Instance, mirror ve texture YOK: sadece shading + gölge test edilir.
+  Bir ışığı test etmek istersen diğerini yorum satırına al.
+-->
+<scene>
+    <maxraytracedepth>0</maxraytracedepth>
+    <background>30 30 40</background>
+    <camera>
+        <position>6 5 8</position>
+        <gaze>-6 -5.5 -8</gaze>
+        <up>0 1 0</up>
+        <nearplane>-1 1 -1 1</nearplane>
+        <neardistance>1.5</neardistance>
+        <imageresolution>400 400</imageresolution>
+    </camera>
+    <lights>
+        <ambientlight>25 25 25</ambientlight>
+        <pointlight id="1">
+            <position>-2 4 -2</position>
+            <intensity>4000 4000 4000</intensity>
+        </pointlight>
+        <triangularlight id="2">
+            <vertex1>0 10 0</vertex1>
+            <vertex2>-4 9 0</vertex2>
+            <vertex3>-2 18 -17</vertex3>
+            <intensity>150 150 150</intensity>
+        </triangularlight>
+    </lights>
+    <materials>
+        <!-- küp: kırmızımsı, parlak -->
+        <material id="1">
+            <ambient>1 1 1</ambient>
+            <diffuse>0.8 0.3 0.3</diffuse>
+            <specular>0.6 0.6 0.6</specular>
+            <phongexponent>40</phongexponent>
+        </material>
+        <!-- zemin: gri, mat -->
+        <material id="2">
+            <ambient>1 1 1</ambient>
+            <diffuse>0.7 0.7 0.7</diffuse>
+            <specular>0.1 0.1 0.1</specular>
+            <phongexponent>5</phongexponent>
+        </material>
+    </materials>
+    <vertexdata>
+        -1.0 -1.0 -1.0
+        1.0 -1.0 -1.0
+        1.0 1.0 -1.0
+        -1.0 1.0 -1.0
+        -1.0 -1.0 1.0
+        1.0 -1.0 1.0
+        1.0 1.0 1.0
+        -1.0 1.0 1.0
+        -8.0 -1.0 -8.0
+        8.0 -1.0 -8.0
+        8.0 -1.0 8.0
+        -8.0 -1.0 8.0
+    </vertexdata>
+    <normaldata>
+        0.0 0.0 -1.0
+        0.0 0.0 1.0
+        -1.0 0.0 0.0
+        1.0 0.0 0.0
+        0.0 -1.0 0.0
+        0.0 1.0 0.0
+    </normaldata>
+    <objects>
+        <!-- Küp: vertex 1-8 -->
+        <mesh id="1">
+            <materialid>1</materialid>
+            <faces>
+                1//1 2//1 3//1
+                1//1 3//1 4//1
+                5//2 6//2 7//2
+                5//2 7//2 8//2
+                1//3 5//3 8//3
+                1//3 8//3 4//3
+                2//4 6//4 7//4
+                2//4 7//4 3//4
+                1//5 2//5 6//5
+                1//5 6//5 5//5
+                4//6 3//6 7//6
+                4//6 7//6 8//6
+            </faces>
+        </mesh>
+        <!-- Zemin: y = -1 düzleminde 16x16'lık kare, vertex 9-12, normal +y -->
+        <mesh id="2">
+            <materialid>2</materialid>
+            <faces>
+                9//6 10//6 11//6
+                9//6 11//6 12//6
+            </faces>
+        </mesh>
+    </objects>
+</scene>
